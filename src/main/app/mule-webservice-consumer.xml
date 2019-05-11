@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:ws="http://www.mulesoft.org/schema/mule/ws" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/current/mule-ws.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
+    <ws:consumer-config name="Web_Service_Consumer" wsdlLocation="CountryInfoService.wsdl" service="CountryInfoService" port="CountryInfoServiceSoap" serviceAddress="http://www.oorsprong.org/websamples.countryinfo/CountryInfoService.wso" doc:name="Web Service Consumer"/>
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8088" doc:name="HTTP Listener Configuration"/>
+    <flow name="mule-webservice-consumerFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/webservice-consumer/{ISOCode}" doc:name="HTTP" allowedMethods="GET"/>
+        <set-variable variableName="ISOCode" value="#[message.inboundProperties['http.uri.params'].ISOCode]" doc:name="Variable"/>
+        <logger message="code : #[flowVars.ISOCode]" level="INFO" doc:name="Logger"/>
+        <dw:transform-message doc:name="Transform Message" metadata:id="623066ba-838f-4ad1-a18b-03cc80fee0c2">
+            <dw:input-payload mimeType="application/java"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/xml
+%namespace ns0 http://www.oorsprong.org/websamples.countryinfo
+---
+{
+	ns0#FullCountryInfo: {
+		ns0#sCountryISOCode: flowVars.ISOCode
+	}
+}]]></dw:set-payload>
+        </dw:transform-message>
+        <ws:consumer config-ref="Web_Service_Consumer" operation="FullCountryInfo" doc:name="Web Service Consumer"/>
+        <dw:transform-message doc:name="Transform Message" metadata:id="70b719ef-8aa3-4142-9b03-31ccd6d6213c">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+%namespace ns0 http://www.oorsprong.org/websamples.countryinfo
+---
+{
+	"CountryInfoResponse": {
+		"CountryInfoResult": {
+			"Name": payload.ns0#FullCountryInfoResponse.ns0#FullCountryInfoResult.ns0#sName,
+			"CapitalCity": payload.ns0#FullCountryInfoResponse.ns0#FullCountryInfoResult.ns0#sCapitalCity,
+			"PhoneCode": payload.ns0#FullCountryInfoResponse.ns0#FullCountryInfoResult.ns0#sPhoneCode,
+			"ContinentCode": payload.ns0#FullCountryInfoResponse.ns0#FullCountryInfoResult.ns0#sContinentCode,
+			"CurrencyISOCode": payload.ns0#FullCountryInfoResponse.ns0#FullCountryInfoResult.ns0#sCurrencyISOCode,
+			"CountryFlag": payload.ns0#FullCountryInfoResponse.ns0#FullCountryInfoResult.ns0#sCountryFlag,
+			"Languages": {
+				
+					"ISOCode": payload.ns0#FullCountryInfoResponse.ns0#FullCountryInfoResult.ns0#Languages.ns0#tLanguage.ns0#sISOCode,
+					"Name": payload.ns0#FullCountryInfoResponse.ns0#FullCountryInfoResult.ns0#Languages.ns0#tLanguage.ns0#sName
+				
+			}
+		}
+	}
+}]]></dw:set-payload>
+        </dw:transform-message>
+    </flow>
+</mule>
